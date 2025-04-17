@@ -21,11 +21,11 @@ export interface GetInfluxSensorValuesParams {
     limit?: number;
 }
 
-const API_URL = 'http://localhost:3002';
+const SENSOR_API_URL = process.env.SENSOR_API_URL ;
 
 export const getSensorValues = async (): Promise<SensorData[]> => {
     try {
-        const response = await fetch(`${API_URL}/sensor-values`);
+        const response = await fetch(`${SENSOR_API_URL}/sensor-values`);
         if (!response.ok) {
             throw new Error('Error al obtener los datos');
         }
@@ -40,7 +40,7 @@ export const getSensorValues = async (): Promise<SensorData[]> => {
 export const getInfluxMeasurements = async (): Promise<Measurement[]> => {
     try {
         console.log('Iniciando petición de measurements...');
-        const response = await fetch(`${API_URL}/influxdb-measurements`);
+        const response = await fetch(`${SENSOR_API_URL }/influxdb-measurements`);
         console.log('Respuesta recibida:', response.status);
         
         if (!response.ok) {
