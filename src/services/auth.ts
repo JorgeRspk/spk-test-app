@@ -1,7 +1,8 @@
 import { removeWindowClass } from '@app/utils/helpers';
 
+
 // Actualizada la URL para apuntar al contenedor Docker en el puerto 3001
-const API_URL = process.env.LOGIN_API_URL ;
+const API_URL = import.meta.env.VITE_LOGIN_API_URL ;
 
 // export const loginByAuth = async (email: string, password: string) => {
 //   const token = 'I_AM_THE_TOKEN';

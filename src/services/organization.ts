@@ -46,7 +46,7 @@ export interface Sensor {
     }>;
 }
 
-const SENSOR_API_URL = process.env.SENSOR_API_URL ;
+const SENSOR_API_URL = import.meta.env.VITE_SENSOR_API_URL ;
 
 export const getOrganization = async (orgId: string): Promise<Organization> => {
     const response = await fetch(`${SENSOR_API_URL}/api/organizations/${orgId}`);

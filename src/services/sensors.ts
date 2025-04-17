@@ -21,7 +21,7 @@ export interface GetInfluxSensorValuesParams {
     limit?: number;
 }
 
-const SENSOR_API_URL = process.env.SENSOR_API_URL ;
+const SENSOR_API_URL = import.meta.env.VITE_SENSOR_API_URL ;
 
 export const getSensorValues = async (): Promise<SensorData[]> => {
     try {
