@@ -90,7 +90,7 @@ export const getInfluxSensorValues = async (params: GetInfluxSensorValuesParams)
         const limitValue = parseInt(limit.toString(), 10);
         queryParams.append('limit', limitValue.toString());
 
-        const url = `${API_URL}/influxdb-data?${queryParams.toString()}`;
+        const url = `${SENSOR_API_URL}/influxdb-data?${queryParams.toString()}`;
         console.log('URL de la petición:', url);
 
         const response = await fetch(url);
