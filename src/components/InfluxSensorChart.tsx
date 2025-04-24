@@ -10,7 +10,7 @@ import {
   Legend
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { getInfluxSensorValues, getInfluxMeasurements, InfluxSensorData, Measurement } from '@app/services/sensors';
+import {  getPostgresMeasurements, Measurement, getPostgresSensorData, SensorData } from '@app/services/sensors';
 
 // Registrar los componentes necesarios de Chart.js
 ChartJS.register(
@@ -41,7 +41,7 @@ const InfluxSensorChart: React.FC<InfluxSensorChartProps> = ({
   selectedDevice: initialDevice,
   showDeviceSelector = true 
 }) => {
-  const [sensorData, setSensorData] = useState<InfluxSensorData[]>([]);
+  const [sensorData, setSensorData] = useState<SensorData[]>([]);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>(initialDevice || '');
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +79,8 @@ const InfluxSensorChart: React.FC<InfluxSensorChartProps> = ({
     const fetchMeasurements = async () => {
       try {
         console.log('Iniciando carga de measurements...');
-        const data = await getInfluxMeasurements();
+        const orgId = 'org-001'; // Replace 'org-001' with the actual organization ID
+        const data = await getPostgresMeasurements(orgId);
         console.log('Measurements cargados:', data);
         
         if (!data || data.length === 0) {
@@ -106,78 +107,50 @@ const InfluxSensorChart: React.FC<InfluxSensorChartProps> = ({
   // Cargar datos del sensor
   useEffect(() => {
     const fetchData = async () => {
-      if (!selectedDevice) {
-        console.log('No hay dispositivo seleccionado, omitiendo carga de datos');
-        return;
-      }
-
-      console.log('Iniciando carga de datos para:', selectedDevice);
-      setLoading(true);
-      setError(null);
-
-      try {
-        // Asegurarse de que limit sea un número
-        const limitValue = parseInt(filters.limit.toString(), 10);
-        console.log('Límite de registros:', limitValue);
-
-        // Convertir fechas locales a UTC
-        const startDateUTC = localToUTC(filters.startDate);
-        const endDateUTC = localToUTC(filters.endDate);
-
-        console.log('Fechas para la petición:', {
-          startDate: startDateUTC,
-          endDate: endDateUTC,
-          originalStart: filters.startDate,
-          originalEnd: filters.endDate
-        });
-
-        const data = await getInfluxSensorValues({
-          point: selectedDevice,
-          startDate: startDateUTC,
-          endDate: endDateUTC,
-          limit: limitValue
-        });
-
-        console.log('Datos recibidos en el componente:', {
-          cantidad: data?.length || 0,
-          primerDato: data?.[0],
-          ultimoDato: data?.[data.length - 1],
-          limitSolicitado: limitValue,
-          rangoFechas: {
-            inicio: startDateUTC,
-            fin: endDateUTC
-          }
-        });
-
-        if (!data || data.length === 0) {
-          console.log('No hay datos disponibles');
-          setError('No hay datos disponibles para este dispositivo');
-          setSensorData([]);
-          return;
+        if (!selectedDevice) {
+            console.log('No hay dispositivo seleccionado, omitiendo carga de datos');
+            return;
         }
 
-        setSensorData(data);
-      } catch (error) {
-        console.error('Error al obtener datos:', error);
-        setError('No se pudieron cargar los datos del sensor');
-        setSensorData([]);
-      } finally {
-        setLoading(false);
-      }
+        console.log('Iniciando carga de datos para:', selectedDevice);
+        setLoading(true);
+        setError(null);
+
+        try {
+            const data = await getPostgresSensorData(selectedDevice, filters.limit); // Cambiado a "getPostgresSensorData"
+            console.log('Datos recibidos:', data);
+
+            if (!data || data.length === 0) {
+                console.log('No hay datos disponibles');
+                setError('No hay datos disponibles para este dispositivo');
+                setSensorData([]);
+                return;
+            }
+
+            setSensorData(data.map(d => ({
+                ...d,
+                Humedad: d.Humedad || 0,
+                Temperatura: d.Temperatura || 0,
+            })));
+        } catch (error) {
+            console.error('Error al obtener datos:', error);
+            setError('No se pudieron cargar los datos del sensor');
+            setSensorData([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, [selectedDevice, filters]);
+}, [selectedDevice, filters]);
 
   // Nuevo useEffect para calcular estadísticas
   useEffect(() => {
     if (!sensorData.length) return;
 
     // Calcular estadísticas
-    const temperatureData = sensorData.map(d => d.Temperature).filter(t => !isNaN(t));
-    const moistureData = sensorData.map(d => d.Moisture_Percent).filter(m => !isNaN(m));
+    const temperatureData = sensorData.map(d => d.Temperatura).filter(t => !isNaN(t));
+    const moistureData = sensorData.map(d => d.Humedad).filter(m => !isNaN(m));
 
     const statsCards: StatsCard[] = [
         {
@@ -297,14 +270,14 @@ const InfluxSensorChart: React.FC<InfluxSensorChartProps> = ({
     datasets: [
       {
         label: 'Humedad',
-        data: sensorData.map(d => d.Moisture_Percent),
+        data: sensorData.map(d => d.Humedad),
         borderColor: 'rgb(53, 162, 235)',
         backgroundColor: 'rgba(53, 162, 235, 0.5)',
         yAxisID: 'y1',
       },
       {
         label: 'Temperatura',
-        data: sensorData.map(d => d.Temperature),
+        data: sensorData.map(d => d.Temperatura),
         borderColor: 'rgb(255, 99, 132)',
         backgroundColor: 'rgba(255, 99, 132, 0.5)',
         yAxisID: 'y2',
@@ -448,4 +421,4 @@ const InfluxSensorChart: React.FC<InfluxSensorChartProps> = ({
   );
 };
 
-export default InfluxSensorChart; 
+export default InfluxSensorChart;

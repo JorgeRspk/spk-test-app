@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getInfluxMeasurements, Measurement } from '@app/services/sensors';
+import { getOrganizationSensors, Sensor } from '@app/services/organization';
+
+const orgId = 'org-001'; // ID de la organización, puedes cambiarlo según sea necesario
 
 const DevicesGrid: React.FC = () => {
-    const [measurements, setMeasurements] = useState<Measurement[]>([]);
+    const [SensorsData, setSensorsData] = useState<Sensor[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchMeasurements = async () => {
             try {
-                const data = await getInfluxMeasurements();
-                setMeasurements(data);
+                const data = await getOrganizationSensors(orgId);
+                setSensorsData(data);
             } catch (error) {
                 console.error('Error al obtener dispositivos:', error);
                 setError('No se pudieron cargar los dispositivos');
@@ -33,8 +35,8 @@ const DevicesGrid: React.FC = () => {
 
     return (
         <div className="row">
-            {measurements.map((device) => (
-                <div key={device.measurements} className="col-md-4 mb-4">
+            {SensorsData.map((SensorsData) => (
+                <div key={SensorsData.id} className="col-md-4 mb-4">
                     <div className="card h-100 shadow-sm" style={{
                         background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
                         border: 'none',
@@ -46,7 +48,7 @@ const DevicesGrid: React.FC = () => {
                             <div>
                                 <h5 className="card-title text-primary mb-3">
                                     <i className="fas fa-microchip mr-2"></i>
-                                    {device.measurements}
+                                    {SensorsData.id}
                                 </h5>
                                 <p className="card-text text-muted">
                                     <i className="fas fa-info-circle mr-2"></i>
@@ -55,7 +57,7 @@ const DevicesGrid: React.FC = () => {
                             </div>
                             <div className="mt-3">
                                 <Link
-                                    to={`/dashboard?device=${encodeURIComponent(device.measurements)}&name=${encodeURIComponent(device.measurements)}&sensor=${encodeURIComponent(device.measurements)}`}
+                                    to={`/dashboard?device=${encodeURIComponent(SensorsData.nodo)}&name=${encodeURIComponent(SensorsData.nombre)}&sensor=${encodeURIComponent(SensorsData.id)}`}
                                     className="btn btn-primary btn-block"
                                     style={{
                                         background: 'linear-gradient(45deg, #007bff 0%, #0056b3 100%)',

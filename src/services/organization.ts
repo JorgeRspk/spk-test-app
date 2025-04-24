@@ -49,7 +49,7 @@ export interface Sensor {
 const SENSOR_API_URL = import.meta.env.VITE_SENSOR_API_URL ;
 
 export const getOrganization = async (orgId: string): Promise<Organization> => {
-    const response = await fetch(`${SENSOR_API_URL}/api/organizations/${orgId}`);
+    const response = await fetch(`${SENSOR_API_URL}api/organizations/${orgId}`);
     if (!response.ok) {
         throw new Error('Error al obtener la organización');
     }
@@ -57,7 +57,7 @@ export const getOrganization = async (orgId: string): Promise<Organization> => {
 };
 
 export const getOrganizationDevices = async (orgId: string): Promise<Device[]> => {
-    const response = await fetch(`${SENSOR_API_URL}/api/organizations/${orgId}/devices`);
+    const response = await fetch(`${SENSOR_API_URL}api/organizations/${orgId}/devices`);
     if (!response.ok) {
         throw new Error('Error al obtener los dispositivos');
     }
@@ -65,9 +65,17 @@ export const getOrganizationDevices = async (orgId: string): Promise<Device[]> =
 };
 
 export const getDeviceSensors = async (deviceId: string): Promise<Sensor[]> => {
-    const response = await fetch(`${SENSOR_API_URL}/api/devices/${deviceId}/sensors`);
+    const response = await fetch(`${SENSOR_API_URL}api/devices/${deviceId}/sensors`);
     if (!response.ok) {
         throw new Error('Error al obtener los sensores');
     }
     return response.json();
 }; 
+
+export const getOrganizationSensors = async (orgId: string): Promise<Sensor[]> => {
+    const response = await fetch(`${SENSOR_API_URL}api/organizations/${orgId}/sensors`);
+    if (!response.ok) {
+        throw new Error('Error al obtener los sensores de la organización');
+    }
+    return response.json();
+}

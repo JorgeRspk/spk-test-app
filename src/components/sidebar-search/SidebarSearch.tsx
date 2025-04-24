@@ -119,6 +119,7 @@ export const SidebarSearch = () => {
               type="button"
               className="btn btn-sidebar"
               onClick={() => handleIconClick()}
+              title={searchText.length === 0 ? 'Search' : 'Clear search'}
             >
               <i
                 className={`fas ${searchText.length === 0 && 'fa-search'} ${

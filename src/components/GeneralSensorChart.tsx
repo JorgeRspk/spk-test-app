@@ -10,7 +10,8 @@ import {
   Legend
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { getInfluxSensorValues, getInfluxMeasurements, InfluxSensorData, Measurement } from '@app/services/sensors';
+import { getPostgresSensorData, getPostgresMeasurements, Measurement, SensorData } from '@app/services/sensors';
+import { getOrganizationSensors, Sensor } from '@app/services/organization';
 
 // Registrar los componentes necesarios de Chart.js
 ChartJS.register(
@@ -32,9 +33,6 @@ interface StatsCard {
     color: string;
 }
 
-interface SensorDataWithSource extends InfluxSensorData {
-  sensor: string;
-}
 
 interface ChartData {
   labels: string[];
@@ -60,8 +58,8 @@ interface Props {
 }
 
 const GeneralSensorChart: React.FC<Props> = ({ showCard = true, showStats = true }) => {
-  const [sensorData, setSensorData] = useState<SensorDataWithSource[]>([]);
-  const [measurements, setMeasurements] = useState<Measurement[]>([]);
+  const [sensorData, setSensorData] = useState<SensorData[]>([]);
+  const [sensors, setSensors] = useState<Sensor[]>([]);
   const [selectedSensors, setSelectedSensors] = useState<string[]>([]);
   const [selectedVariable, setSelectedVariable] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -86,12 +84,13 @@ const GeneralSensorChart: React.FC<Props> = ({ showCard = true, showStats = true
     return date.toISOString();
   };
 
-  // Cargar los measurements disponibles
+  // Cargar los sensores disponibles
   useEffect(() => {
-    const fetchMeasurements = async () => {
+    const fetchSensors = async () => {
       try {
         console.log('Iniciando carga de measurements...');
-        const data = await getInfluxMeasurements();
+        const orgId = 'org-001'; 
+        const data = await getOrganizationSensors(orgId);
         console.log('Measurements cargados:', data);
         
         if (!data || data.length === 0) {
@@ -100,14 +99,14 @@ const GeneralSensorChart: React.FC<Props> = ({ showCard = true, showStats = true
           return;
         }
         
-        setMeasurements(data);
+        setSensors(data);
       } catch (error) {
         console.error('Error al obtener measurements:', error);
         setError('No se pudieron cargar los dispositivos disponibles');
       }
     };
 
-    fetchMeasurements();
+    fetchSensors();
   }, []);
 
   // Cargar datos de los sensores
@@ -129,21 +128,18 @@ const GeneralSensorChart: React.FC<Props> = ({ showCard = true, showStats = true
 
         // Cargar datos para cada sensor seleccionado
         const dataPromises = selectedSensors.map(sensor =>
-          getInfluxSensorValues({
-            point: sensor,
-            startDate: startDateUTC,
-            endDate: endDateUTC,
-            limit: limitValue
-          })
+          getPostgresSensorData(sensor, limitValue)
         );
 
         const results = await Promise.all(dataPromises);
         
         // Combinar los datos de todos los sensores, manteniendo la referencia al sensor
-        const combinedData = results.flatMap((sensorData, index) => 
+        const combinedData = results.flatMap((sensorData, index) =>
           sensorData.map(data => ({
-            ...data,
-            sensor: selectedSensors[index]
+              sensorId: selectedSensors[index],
+              Humedad: data.Humedad, // Cambiado a "Humedad"
+              Temperatura: data.Temperatura, // Cambiado a "Temperatura"
+              time: data.time,
           }))
         );
 
@@ -169,12 +165,42 @@ const GeneralSensorChart: React.FC<Props> = ({ showCard = true, showStats = true
     return () => clearInterval(interval);
   }, [selectedSensors, selectedVariable, filters]);
 
+  useEffect(() => {
+    const fetchData = async () => {
+        try {
+            // Verifica que haya al menos un sensor seleccionado antes de intentar obtener los datos
+            if (selectedSensors.length > 0) {
+                const data = await getPostgresSensorData(selectedSensors[0], filters.limit); // Usa el ID del primer sensor seleccionado y el límite
+                // Ensure that data is not undefined and is an array before mapping
+                if (data && Array.isArray(data)) {
+                    const sensorName = selectedSensors[0]; // Get the sensor name
+                    const mappedData = data.map(item => ({
+                        ...item,
+                        sensor: sensorName, // Add the sensor property
+                        Moisture_Percent: item.Humedad,
+                        Temperature: item.Temperatura,
+                    }));
+                    setSensorData(mappedData);
+                } else {
+                    console.warn('No data or invalid data received from getPostgresSensorData');
+                    setSensorData([]); // Set to empty array to avoid further issues
+                }
+            }
+        } catch (error) {
+            console.error('Error al obtener datos del sensor:', error);
+            setError('No se pudieron cargar los datos del sensor');
+        }
+    };
+
+    fetchData();
+}, [selectedSensors, filters.limit]);
+
   // Calcular estadísticas
   useEffect(() => {
     if (!sensorData.length || !selectedVariable) return;
 
     const variableData = sensorData.map(d => {
-      const value = d[selectedVariable as keyof InfluxSensorData];
+      const value = d[selectedVariable as keyof SensorData];
       return typeof value === 'number' ? value : NaN;
     }).filter(v => !isNaN(v));
 
@@ -322,47 +348,36 @@ const GeneralSensorChart: React.FC<Props> = ({ showCard = true, showStats = true
 
   // Luego creamos los datasets usando las etiquetas
   const datasets = selectedSensors.map((sensor, index) => {
-    // Filtrar datos para este sensor específico
-    const filteredSensorData = sensorData.filter((d: SensorDataWithSource) => d.sensor === sensor);
-    
-    // Crear un mapa de tiempo ISO a valor para este sensor
-    const timeToValue = new Map(
-      filteredSensorData.map((d: SensorDataWithSource) => [
-        d.time,
-        d[selectedVariable as keyof InfluxSensorData]
-      ])
-    );
-
-    // Crear el array de datos alineado con las etiquetas de tiempo
-    const alignedData: (number | null)[] = Array.from(new Set(sensorData.map(d => d.time)))
-      .sort()
-      .map(time => {
-        const value = timeToValue.get(time);
-        return typeof value === 'number' ? value : null;
-      });
+    const filteredSensorData = sensorData.filter(d => d.sensorId === sensor);
 
     return {
-      label: sensor,
-      data: alignedData,
-      borderColor: `hsl(${(index * 360) / selectedSensors.length}, 70%, 50%)`,
-      backgroundColor: `hsla(${(index * 360) / selectedSensors.length}, 70%, 50%, 0.5)`,
-      fill: false,
-      tension: 0,
-      borderWidth: 2,
-      pointRadius: 0,
-      pointHoverRadius: 5,
-      pointHoverBackgroundColor: `hsl(${(index * 360) / selectedSensors.length}, 70%, 50%)`,
-      pointHoverBorderColor: '#fff',
-      pointHoverBorderWidth: 2,
-      spanGaps: true,
+        label: sensor,
+        data: filteredSensorData.map(d => d[selectedVariable as keyof SensorData]),
+        borderColor: `hsl(${(index * 360) / selectedSensors.length}, 70%, 50%)`,
+        backgroundColor: `hsla(${(index * 360) / selectedSensors.length}, 70%, 50%, 0.5)`,
     };
   });
 
   // Finalmente creamos el objeto data
   const data: ChartData = {
     labels: timeLabels,
-    datasets
+    datasets: datasets.map((dataset) => ({
+        ...dataset,
+        data: dataset.data.map((value) => (typeof value === 'number' ? value : null)),
+        fill: false,
+        tension: 0.4,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: dataset.borderColor,
+        pointHoverBorderColor: '#fff',
+        pointHoverBorderWidth: 2,
+    })),
   };
+
+  if (!sensorData || sensorData.length === 0) {
+    return <div className="alert alert-info">No hay datos disponibles para mostrar</div>;
+  }
 
   return showCard ? (
     <div className="card">
@@ -374,17 +389,17 @@ const GeneralSensorChart: React.FC<Props> = ({ showCard = true, showStats = true
           <div className="col-md-4">
             <div className="form-group">
               <label>Sensores</label>
-              {measurements.map((device) => (
-                <div key={device.measurements} className="form-check">
+              {sensors.map((device) => (
+                <div key={device.nombre} className="form-check">
                   <input
                     type="checkbox"
                     className="form-check-input"
-                    id={`sensor-${device.measurements}`}
-                    checked={selectedSensors.includes(device.measurements)}
-                    onChange={() => handleSensorChange(device.measurements)}
+                    id={`sensor-${device.nombre}`}
+                    checked={selectedSensors.includes(device.nombre)}
+                    onChange={() => handleSensorChange(device.nombre)}
                   />
-                  <label className="form-check-label" htmlFor={`sensor-${device.measurements}`}>
-                    {device.measurements}
+                  <label className="form-check-label" htmlFor={`sensor-${device.nombre}`}>
+                    {device.nombre}
                   </label>
                 </div>
               ))}
@@ -500,17 +515,17 @@ const GeneralSensorChart: React.FC<Props> = ({ showCard = true, showStats = true
         <div className="col-md-4">
           <div className="form-group">
             <label>Sensores</label>
-            {measurements.map((device) => (
-              <div key={device.measurements} className="form-check">
+            {sensors.map((device) => (
+              <div key={device.nombre} className="form-check">
                 <input
                   type="checkbox"
                   className="form-check-input"
-                  id={`sensor-${device.measurements}`}
-                  checked={selectedSensors.includes(device.measurements)}
-                  onChange={() => handleSensorChange(device.measurements)}
+                  id={`sensor-${device.nombre}`}
+                  checked={selectedSensors.includes(device.nombre)}
+                  onChange={() => handleSensorChange(device.nombre)}
                 />
-                <label className="form-check-label" htmlFor={`sensor-${device.measurements}`}>
-                  {device.measurements}
+                <label className="form-check-label" htmlFor={`sensor-${device.nombre}`}>
+                  {device.nombre}
                 </label>
               </div>
             ))}
@@ -582,44 +597,44 @@ const GeneralSensorChart: React.FC<Props> = ({ showCard = true, showStats = true
                         <h3 className="mb-0">
                           {stat.min.toFixed(2)}{stat.unit}
                         </h3>
+                        </div>
                       </div>
-                    </div>
-                    <div className="col-6">
-                      <div className="text-white">
-                        <p className="mb-0">
-                          <i className="fas fa-arrow-up mr-2"></i>
-                          Máximo
-                        </p>
-                        <h3 className="mb-0">
-                          {stat.max.toFixed(2)}{stat.unit}
-                        </h3>
+                      <div className="col-6">
+                        <div className="text-white">
+                          <p className="mb-0">
+                            <i className="fas fa-arrow-up mr-2"></i>
+                            Máximo
+                          </p>
+                          <h3 className="mb-0">
+                            {stat.max.toFixed(2)}{stat.unit}
+                          </h3>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {error ? (
-        <div className="alert alert-danger">{error}</div>
-      ) : loading ? (
-        <div className="d-flex justify-content-center">
-          <div className="spinner-border text-primary" role="status">
-            <span className="sr-only">Cargando...</span>
+            ))}
           </div>
-        </div>
-      ) : sensorData.length === 0 ? (
-        <div className="alert alert-info">No hay datos disponibles para mostrar</div>
-      ) : (
-        <div style={{ height: '600px', width: '100%' }}>
-          <Line options={options} data={data} />
-        </div>
-      )}
-    </>
-  );
+        )}
+
+        {error ? (
+          <div className="alert alert-danger">{error}</div>
+        ) : loading ? (
+          <div className="d-flex justify-content-center">
+            <div className="spinner-border text-primary" role="status">
+              <span className="sr-only">Cargando...</span>
+            </div>
+          </div>
+        ) : sensorData.length === 0 ? (
+          <div className="alert alert-info">No hay datos disponibles para mostrar</div>
+        ) : (
+          <div style={{ height: '600px', width: '100%' }}>
+            <Line options={options} data={data} />
+          </div>
+        )}
+      </>
+    );
 };
 
-export default GeneralSensorChart; 
+export default GeneralSensorChart;

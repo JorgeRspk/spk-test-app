@@ -13,7 +13,7 @@ const Dashboard = () => {
 
     return (
         <div className="content-wrapper">
-            <ContentHeader title={selectedDevice ? deviceName : 'Sensores'} />
+            <ContentHeader title={selectedDevice ? selectedSensor || 'Sensor Desconocido' : 'Sensores'} />
             <section className="content">
                 <div className="container-fluid">
                     <div className="card">
@@ -21,7 +21,7 @@ const Dashboard = () => {
                             {selectedDevice ? (
                                 <>
                                     <InfluxSensorChart 
-                                        selectedDevice={selectedDevice} 
+                                        selectedDevice={selectedSensor} 
                                         showDeviceSelector={false} 
                                     />
                                     {selectedSensor && (
