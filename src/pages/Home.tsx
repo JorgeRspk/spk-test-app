@@ -1,41 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { ContentHeader } from '@components';
-import { getOrganization, getOrganizationDevices, getDeviceSensors, Organization, Device, Sensor } from '@app/services/organization';
-
-interface Alert {
-    id: string;
-    deviceName: string;
-    sensorName: string;
-    message: string;
-    timestamp: Date;
-    type: 'warning' | 'danger';
-}
-
-// Datos de ejemplo para alertas (después se reemplazarán con datos reales)
-const mockAlerts: Alert[] = [
-    {
-        id: '1',
-        deviceName: 'ESP32-001',
-        sensorName: 'Sensor Temp 1',
-        message: 'Temperatura excede el límite máximo (30°C)',
-        timestamp: new Date(),
-        type: 'danger'
-    },
-    {
-        id: '2',
-        deviceName: 'Arduino-001',
-        sensorName: 'Sensor Hum 1',
-        message: 'Humedad por debajo del límite mínimo (20%)',
-        timestamp: new Date(),
-        type: 'warning'
-    }
-];
+import { 
+    getOrganization, 
+    getOrganizationDevices, 
+    getDeviceSensors, 
+    Organization, 
+    Device, 
+    Sensor 
+} from '@app/services/organization';
+import { Alerta, getPostgresSensorAlerts } from '@app/services/sensors';
 
 const Home: React.FC = () => {
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [devices, setDevices] = useState<Device[]>([]);
     const [allSensors, setAllSensors] = useState<Sensor[]>([]);
-    const [alerts] = useState<Alert[]>(mockAlerts);
+    const [alerts, setAlerts] = useState<Alerta[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +37,16 @@ const Home: React.FC = () => {
                 const sensorsArrays = await Promise.all(sensorsPromises);
                 const allSensorsData = sensorsArrays.flat();
                 setAllSensors(allSensorsData);
+
+                // Cargar alertas para cada sensor
+                const alertsPromises = allSensorsData.map(sensor => 
+                    getPostgresSensorAlerts(sensor.id, 10)
+                );
+                const alertsArrays = await Promise.all(alertsPromises);
+                const allAlertsData = alertsArrays.flat().sort((a, b) => 
+                    new Date(b.hora_creacion).getTime() - new Date(a.hora_creacion).getTime()
+                );
+                setAlerts(allAlertsData);
 
             } catch (err) {
                 console.error('Error cargando datos:', err);
@@ -245,7 +234,7 @@ const Home: React.FC = () => {
                                 <div className="card-header">
                                     <h3 className="card-title">
                                         <i className="fas fa-exclamation-triangle mr-2"></i>
-                                        Alertas del Día
+                                        Alertas Recientes
                                     </h3>
                                 </div>
                                 <div className="card-body">
@@ -256,21 +245,31 @@ const Home: React.FC = () => {
                                         </div>
                                     ) : (
                                         <div className="timeline">
-                                            {alerts.map(alert => (
-                                                <div key={alert.id} className="timeline-item">
-                                                    <div className="timeline-item-marker"></div>
-                                                    <div className={`alert alert-${alert.type} mb-3`}>
-                                                        <h5 className="alert-heading">
-                                                            <i className="fas fa-exclamation-circle mr-2"></i>
-                                                            {alert.deviceName} - {alert.sensorName}
-                                                        </h5>
-                                                        <p className="mb-0">{alert.message}</p>
-                                                        <small className="text-muted">
-                                                            {alert.timestamp.toLocaleString('es-ES')}
-                                                        </small>
+                                            {alerts.map(alert => {
+                                                const sensor = allSensors.find(s => s.id === alert.sensor_id);
+                                                const device = devices.find(d => 
+                                                    d.id === sensor?.id_modelo
+                                                );
+
+                                                return (
+                                                    <div key={alert.id_alerta} className="timeline-item">
+                                                        <div className="timeline-item-marker"></div>
+                                                        <div className={`alert alert-${alert.max_or_min === 'max' ? 'danger' : 'warning'} mb-3`}>
+                                                            <h5 className="alert-heading">
+                                                                <i className="fas fa-exclamation-circle mr-2"></i>
+                                                                {device?.nombre || 'Dispositivo'} - {sensor?.nombre || 'Sensor'}
+                                                            </h5>
+                                                            <p className="mb-0">
+                                                                {alert.metric_name}: {alert.value} 
+                                                                ({alert.max_or_min === 'max' ? 'Máximo' : 'Mínimo'})
+                                                            </p>
+                                                            <small className="text-muted">
+                                                                {new Date(alert.hora_creacion).toLocaleString('es-ES')}
+                                                            </small>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
@@ -283,4 +282,4 @@ const Home: React.FC = () => {
     );
 };
 
-export default Home; 
+export default Home;

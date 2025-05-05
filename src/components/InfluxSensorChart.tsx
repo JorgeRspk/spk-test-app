@@ -92,8 +92,8 @@ const InfluxSensorChart: React.FC<InfluxSensorChartProps> = ({
         setMeasurements(data);
         
         if (!selectedDevice && data.length > 0) {
-          console.log('Seleccionando primer dispositivo:', data[0].measurements);
-          setSelectedDevice(data[0].measurements);
+          console.log('Seleccionando primer dispositivo:', data[0].name);
+          setSelectedDevice(data[0].name); // Asignar el primer measurement como dispositivo seleccionado
         }
       } catch (error) {
         console.error('Error al obtener measurements:', error);
@@ -301,8 +301,8 @@ const InfluxSensorChart: React.FC<InfluxSensorChartProps> = ({
             >
               <option value="">Seleccione un dispositivo</option>
               {measurements.map((device) => (
-                <option key={device.measurements} value={device.measurements}>
-                  {device.measurements}
+                <option key={device.id} value={device.name}>
+                  {device.name}
                 </option>
               ))}
             </select>

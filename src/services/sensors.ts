@@ -6,8 +6,31 @@ export interface SensorData {
 }
 
 export interface Measurement {
-    measurements: string;
+    id: number,
+    name: string;
 }
+
+export interface Alerta {
+    id_alerta: string;
+    id_notificacion: string;
+    metric_name: string;
+    value: number;
+    sensor_id: string;
+    max_or_min: string;
+    hora_creacion: string;
+    notificacion: Notificacion;
+}
+
+export interface Notificacion {
+    id_notificacion: string;
+    id_tipo: string;
+    mensaje: string;
+    titulo: string;
+    metadata: string;
+    leido: boolean;
+    destino: string;
+    user_id: string;
+}    
 
 const SENSOR_API_URL = import.meta.env.VITE_SENSOR_API_URL ;
 
@@ -103,6 +126,63 @@ export const getPostgresSensorData = async (sensorId: string, limit: number = 50
         return validData;
     } catch (error) {
         console.error('Error al obtener datos del sensor desde PostgreSQL:', error);
+        throw error;
+    }
+};
+
+// Obtener las alertas de un sensor desde la API con endpoint /api/sensors/:sensorId/alerts
+export const getPostgresSensorAlerts = async (sensorId: string, limit: number = 50): Promise<Alerta[]> => {
+    try {
+        console.log('Obteniendo alertas del sensor desde PostgreSQL:', { sensorId, limit });
+
+        const url = `${SENSOR_API_URL}api/sensors/${sensorId}/alerts?limit=${limit}`;
+        console.log('URL de la petición:', url);
+
+        const response = await fetch(url);
+        console.log('Respuesta recibida:', response.status);
+
+        if (!response.ok) {
+            throw new Error(`Error al obtener alertas del sensor: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Alertas recibidas:', data);
+
+        if (!Array.isArray(data)) {
+            console.error('Las alertas no son un array:', data);
+            throw new Error('Formato de alertas inválido');
+        }
+
+        // Validar y transformar las alertas
+        const validData = data.map(alerta => {
+            if (!alerta || typeof alerta !== 'object') {
+                console.error('Alerta inválida:', alerta);
+                return null;
+            }
+
+            // Validar campos requeridos
+            if (!alerta.id_alerta || !alerta.sensor_id || !alerta.metric_name) {
+                console.error('Campos requeridos faltantes en la alerta:', alerta);
+                return null;
+            }
+
+            return {
+                id_alerta: alerta.id_alerta,
+                id_notificacion: alerta.id_notificacion,
+                metric_name: alerta.metric_name,
+                value: Number(alerta.value),
+                sensor_id: alerta.sensor_id,
+                max_or_min: alerta.max_or_min,
+                hora_creacion: alerta.hora_creacion,
+                notificacion: alerta.notificacion
+            };
+        }).filter(alerta => alerta !== null) as Alerta[];
+
+        console.log('Alertas procesadas:', validData);
+        return validData;
+
+    } catch (error) {
+        console.error('Error al obtener alertas del sensor desde PostgreSQL:', error);
         throw error;
     }
 };

@@ -4,6 +4,7 @@ import { ContentHeader } from '@components';
 import InfluxSensorChart from '@app/components/InfluxSensorChart';
 import DevicesGrid from '@app/components/DevicesGrid';
 import Diagrama from './Diagrama';
+import AlertsContainer from '@app/components/AlertsContainer';
 
 const Dashboard = () => {
     const [searchParams] = useSearchParams();
@@ -25,16 +26,28 @@ const Dashboard = () => {
                                         showDeviceSelector={false} 
                                     />
                                     {selectedSensor && (
-                                        <div className="mt-4">
-                                            <div className="card">
-                                                <div className="card-header">
-                                                    <h3 className="card-title">Ubicación del Sensor en el Sistema</h3>
-                                                </div>
-                                                <div className="card-body">
-                                                    <Diagrama selectedSensor={selectedSensor} showExample={true} />
+                                        <>
+                                            <div className="mt-4">
+                                                <div className="card">
+                                                    <div className="card-header">
+                                                        <h3 className="card-title">Ubicación del Sensor en el Sistema</h3>
+                                                    </div>
+                                                    <div className="card-body">
+                                                        <Diagrama selectedSensor={selectedSensor} showExample={true} />
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                            <div className="mt-4">
+                                                <div className="card">
+                                                    <div className="card-header">
+                                                        <h3 className="card-title">Alertas del Sensor</h3>
+                                                    </div>
+                                                    <div className="card-body">
+                                                        <AlertsContainer selectedSensor={selectedSensor} limit={10} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
                                 </>
                             ) : (

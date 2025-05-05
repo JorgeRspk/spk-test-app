@@ -25,7 +25,7 @@ const Login = () => {
       dispatch(setCurrentUser(user));
       toast.success('¡Inicio de sesión exitoso!');
       setAuthLoading(false);
-      navigate('/dashboard');
+      navigate('/home');
     } catch (error: any) {
       setAuthLoading(false);
       toast.error(error.message || 'Error al iniciar sesión');

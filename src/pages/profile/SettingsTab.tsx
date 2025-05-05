@@ -7,14 +7,27 @@ const SettingsTab = ({ isActive }: { isActive: boolean }) => {
       <form className="form-horizontal">
         <div className="form-group row">
           <label htmlFor="inputName" className="col-sm-2 col-form-label">
-            Name
+            Nombre
           </label>
           <div className="col-sm-10">
             <input
               type="email"
               className="form-control"
               id="inputName"
-              placeholder="Name"
+              placeholder="Nombre"
+            />
+          </div>
+        </div>
+        <div className="form-group row">
+          <label htmlFor="inputName" className="col-sm-2 col-form-label">
+            Apellido
+          </label>
+          <div className="col-sm-10">
+            <input
+              type="email"
+              className="form-control"
+              id="inputName"
+              placeholder="Apellido"
             />
           </div>
         </div>
@@ -32,41 +45,15 @@ const SettingsTab = ({ isActive }: { isActive: boolean }) => {
           </div>
         </div>
         <div className="form-group row">
-          <label htmlFor="inputName2" className="col-sm-2 col-form-label">
-            Name
+          <label htmlFor="inputName" className="col-sm-2 col-form-label">
+            Telefono celular
           </label>
           <div className="col-sm-10">
             <input
-              type="text"
+              type="phone"
               className="form-control"
-              id="inputName2"
-              placeholder="Name"
-            />
-          </div>
-        </div>
-        <div className="form-group row">
-          <label htmlFor="inputExperience" className="col-sm-2 col-form-label">
-            Experience
-          </label>
-          <div className="col-sm-10">
-            <textarea
-              className="form-control"
-              id="inputExperience"
-              placeholder="Experience"
-              defaultValue=""
-            />
-          </div>
-        </div>
-        <div className="form-group row">
-          <label htmlFor="inputSkills" className="col-sm-2 col-form-label">
-            Skills
-          </label>
-          <div className="col-sm-10">
-            <input
-              type="text"
-              className="form-control"
-              id="inputSkills"
-              placeholder="Skills"
+              id="inputName"
+              placeholder="123456789"
             />
           </div>
         </div>

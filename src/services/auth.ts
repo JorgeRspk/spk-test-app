@@ -102,3 +102,24 @@ export const logout = async () => {
     throw error;
   }
 };
+
+export const getUserData = async (userId: string) => {
+  try {
+    const response = await fetch(`${API_URL}/user/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al obtener los datos del usuario');
+    }
+
+    const data = await response.json();
+    return data.user;
+  } catch (error) {
+    throw error;
+  }
+}
